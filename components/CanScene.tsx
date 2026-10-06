@@ -359,25 +359,24 @@ export default function CanScene() {
         const dt = Math.min(clock.getDelta(), 0.05);
         const elapsed = clock.elapsedTime;
 
-        scrollState.progress = lerp(
-          scrollState.progress,
-          scrollState.target,
-          1 - Math.pow(0.001, dt)
-        );
+        // Snappy follow: Lenis already smooths the scroll itself, so the
+        // 3D state only needs light jitter filtering to stay in sync.
+        const follow = 1 - Math.pow(0.0001, dt);
+        scrollState.progress = lerp(scrollState.progress, scrollState.target, follow);
         scrollState.finaleProgress = lerp(
           scrollState.finaleProgress,
           scrollState.finaleTarget,
-          1 - Math.pow(0.001, dt)
+          follow
         );
         const p = clamp01(scrollState.progress);
         const q = clamp01(scrollState.finaleProgress);
 
         // ---- scroll mapping: dwell + travel per flavor ----
-        // Each flavor block is SCREENS tall (see FlavorSection): the first half
-        // pins the text ("fixed scroll", dwell) while the can holds its flavor,
-        // the second half (travel) plays the carousel spin + dive to the next.
+        // Each flavor block is SCREENS tall (see FlavorSection): the first
+        // (SCREENS-1) screens pin the text ("fixed scroll", dwell) while the
+        // can holds its flavor, then travel plays the carousel spin + dive.
         // This guarantees the next can never appears while its text is on screen.
-        const SCREENS = 2;
+        const SCREENS = 1.5;
         const T = 1 + N * SCREENS; // hero (1 screen) + journey, in screens
         const d0 = (idx: number) => (1 + idx * SCREENS) / T; // dwell start
         const d1 = (idx: number) => (idx * SCREENS + SCREENS) / T; // dwell end

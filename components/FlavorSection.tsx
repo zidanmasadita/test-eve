@@ -41,7 +41,7 @@ function Card({
   const right = align === "right";
 
   return (
-    <div ref={ref} id={`rasa-${flavor.index}`} className="relative h-[200vh]">
+    <div ref={ref} id={`rasa-${flavor.index}`} className="relative h-[150vh]">
       {/* pinned ("fixed scroll") text: stays put while the can performs its carousel spin */}
       <div
         className={`sticky top-0 flex h-screen px-6 pt-24 md:px-0 md:pt-0 ${

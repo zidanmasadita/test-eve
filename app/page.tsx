@@ -21,7 +21,7 @@ export default function Home() {
       trigger: "#journey",
       start: "top bottom",
       end: "bottom top",
-      scrub: 0.6,
+      scrub: true,
       onUpdate: (self) => {
         scrollState.target = self.progress;
       },
@@ -30,7 +30,7 @@ export default function Home() {
       trigger: "#beli",
       start: "top bottom",
       end: "top top",
-      scrub: 0.6,
+      scrub: true,
       onUpdate: (self) => {
         scrollState.finaleTarget = self.progress;
       },
