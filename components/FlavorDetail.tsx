@@ -48,13 +48,13 @@ export default function FlavorDetail({ index, onClose, onAdd }: Props) {
   // scroll-scrub the video across the tall video zone
   useEffect(() => {
     const scroller = scrollerRef.current;
-    if (!scroller) return;
+    const video = videoRef.current;
+    if (!scroller || !video) return;
     let raf = 0;
     const sync = () => {
       raf = 0;
       const zone = zoneRef.current;
-      const video = videoRef.current;
-      if (!zone || !video || !video.duration || !isFinite(video.duration)) return;
+      if (!zone || !video.duration || !isFinite(video.duration)) return;
       const total = zone.offsetHeight - scroller.clientHeight;
       const pr = total > 0 ? clamp01(scroller.scrollTop / total) : 0;
       const t = pr * video.duration;
@@ -64,12 +64,18 @@ export default function FlavorDetail({ index, onClose, onAdd }: Props) {
       if (!raf) raf = requestAnimationFrame(sync);
     };
     scroller.addEventListener("scroll", onScroll, { passive: true });
-    return () => scroller.removeEventListener("scroll", onScroll);
+    video.addEventListener("loadedmetadata", sync);
+    sync();
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      video.removeEventListener("loadedmetadata", sync);
+    };
   }, [videoOk]);
 
   return (
     <div
       data-detail-modal
+      data-lenis-prevent
       ref={scrollerRef}
       className="fixed inset-0 z-[60] overflow-y-auto bg-black/85 backdrop-blur-md"
     >

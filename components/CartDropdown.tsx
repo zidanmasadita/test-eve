@@ -45,7 +45,7 @@ export default function CartDropdown({
         </p>
       ) : (
         <>
-          <ul className="max-h-[44vh] space-y-2.5 overflow-y-auto px-4 py-4">
+          <ul data-lenis-prevent className="max-h-[44vh] space-y-2.5 overflow-y-auto px-4 py-4">
             {items.map((it) => (
               <li
                 key={it.flavor.id}
