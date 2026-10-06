@@ -83,10 +83,10 @@ export default function Home() {
         >
           <div className="max-w-2xl rounded-3xl bg-black/25 p-10 text-center backdrop-blur-xl">
             <h2 className="text-4xl font-black text-white md:text-5xl">
-              Kenapa Skyfall?
+              Kenapa JosJis?
             </h2>
             <p className="mt-6 leading-relaxed text-white/85">
-              Setiap rasa Skyfall terinspirasi dari lapisan perjalanan langit ke
+              Setiap rasa JosJis terinspirasi dari lapisan perjalanan langit ke
               bumi — dari birunya langit siang, hangatnya matahari terbit,
               lembutnya awan, misterinya senja, rimbunnya hutan, hingga
               kekayaan rasa perut bumi. Semua dibuat dengan bahan alami,
@@ -125,8 +125,8 @@ export default function Home() {
         </section>
 
         <footer className="border-t border-white/15 px-6 py-10 text-center text-sm text-white/60">
-          <p className="font-black tracking-[0.3em] text-white/80">SKYFALL</p>
-          <p className="mt-2">© 2026 Skyfall Beverage. Dari langit ke bumi.</p>
+          <p className="font-black tracking-[0.3em] text-white/80">JOSJIS</p>
+          <p className="mt-2">© 2026 JosJis Beverage. Dari langit ke bumi.</p>
         </footer>
       </main>
     </SmoothScroll>

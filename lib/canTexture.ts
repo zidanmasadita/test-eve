@@ -51,7 +51,7 @@ export function makeLabelTexture(flavor: Flavor): HTMLCanvasElement {
   ctx.fillStyle = text;
   ctx.globalAlpha = 0.85;
   ctx.font = "600 34px system-ui, sans-serif";
-  ctx.fillText("SKYFALL", W / 2, 92);
+  ctx.fillText("JOSJIS", W / 2, 92);
   ctx.globalAlpha = 1;
 
   // Divider line

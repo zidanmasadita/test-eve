@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SKYFALL — Dari Langit ke Bumi",
+  title: "JOSJIS — Dari Langit ke Bumi",
   description:
     "Minuman kaleng premium 6 rasa. Scroll dari langit ke bumi dan saksikan setiap kaleng bertransformasi.",
 };

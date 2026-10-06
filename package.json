@@ -1,5 +1,5 @@
 {
-  "name": "skyfall",
+  "name": "josjis",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -27,5 +27,5 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "description": "SKYFALL \u2014 minuman kaleng premium. Scroll dari langit ke bumi. Next.js + GSAP + Lenis + Three.js WebGPU."
+  "description": "JOSJIS \u2014 minuman kaleng premium. Scroll dari langit ke bumi. Next.js + GSAP + Lenis + Three.js WebGPU."
 }
