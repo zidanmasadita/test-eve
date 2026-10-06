@@ -10,11 +10,16 @@ export interface Flavor {
   /** Background gradient stops: sky (top) -> horizon (bottom) */
   bg: { sky: string; horizon: string };
   fruit: string;
+  /** AI-generated assets */
+  label: string;
+  bgImage: string;
 }
 
 export const FLAVORS: Flavor[] = [
   {
     id: "azure-berry",
+    label: "/labels/azure-berry.jpg",
+    bgImage: "/backgrounds/azure-berry.jpg",
     index: 0,
     name: "Azure Berry",
     tagline: "Langit Siang",
@@ -27,6 +32,8 @@ export const FLAVORS: Flavor[] = [
   },
   {
     id: "solar-citrus",
+    label: "/labels/solar-citrus.jpg",
+    bgImage: "/backgrounds/solar-citrus.jpg",
     index: 1,
     name: "Solar Citrus",
     tagline: "Matahari Terbit",
@@ -39,6 +46,8 @@ export const FLAVORS: Flavor[] = [
   },
   {
     id: "cloud-coconut",
+    label: "/labels/cloud-coconut.jpg",
+    bgImage: "/backgrounds/cloud-coconut.jpg",
     index: 2,
     name: "Cloud Coconut",
     tagline: "Awan",
@@ -51,6 +60,8 @@ export const FLAVORS: Flavor[] = [
   },
   {
     id: "dusk-berry",
+    label: "/labels/dusk-berry.jpg",
+    bgImage: "/backgrounds/dusk-berry.jpg",
     index: 3,
     name: "Dusk Berry",
     tagline: "Senja",
@@ -63,6 +74,8 @@ export const FLAVORS: Flavor[] = [
   },
   {
     id: "forest-matcha",
+    label: "/labels/forest-matcha.jpg",
+    bgImage: "/backgrounds/forest-matcha.jpg",
     index: 4,
     name: "Forest Matcha",
     tagline: "Hutan",
@@ -75,6 +88,8 @@ export const FLAVORS: Flavor[] = [
   },
   {
     id: "terra-cacao",
+    label: "/labels/terra-cacao.jpg",
+    bgImage: "/backgrounds/terra-cacao.jpg",
     index: 5,
     name: "Terra Cacao",
     tagline: "Bumi",

@@ -32,9 +32,10 @@ lib/
 
 ## Aset
 
-Label kaleng saat ini **prosedural** (digambar via canvas di `lib/canTexture.ts`).
-Untuk mengganti dengan artwork AI: generate sesuai prompt master, taruh di
-`public/labels/<id>.png`, lalu update `canTexture.ts` / `flavors.ts`.
+- `public/labels/` — label kaleng AI (flat 2:1, di-wrap ke silinder 3D)
+- `public/backgrounds/` — background AI tiap rasa (crossfade mengikuti scroll)
+- Label dimuat via `TextureLoader` dengan fallback prosedural (`lib/canTexture.ts`)
+  selama gambar belum selesai diunduh.
 
 ## Development
 
