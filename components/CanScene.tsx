@@ -68,6 +68,8 @@ export default function CanScene() {
     if (!canvas) return;
     let cancelled = false;
     let renderer: any;
+    let onPointerDown: ((e: PointerEvent) => void) | null = null;
+    let onPointerUp: ((e: PointerEvent) => void) | null = null;
 
     const boot = async () => {
       // ---- Renderer: WebGPU first, WebGL fallback ----
@@ -217,6 +219,7 @@ export default function CanScene() {
       // the hero can (single, morphs labels mid-spin)
       const bodyMat = makeLabelMaterial(0);
       const can = createCan(bodyMat);
+      can.userData.flavorIdx = 0;
       scene.add(can);
 
       let shownLabel = 0;
@@ -224,6 +227,7 @@ export default function CanScene() {
       const setLabel = (idx: number, pop: boolean) => {
         if (idx === shownLabel) return;
         shownLabel = idx;
+        can.userData.flavorIdx = idx;
         bodyMat.map = labelTex(idx, bodyMat);
         bodyMat.needsUpdate = true;
         if (pop) popT = 0;
@@ -236,9 +240,48 @@ export default function CanScene() {
       const minis = FLAVORS.map((_, idx) => {
         const m = createCan(makeLabelMaterial(idx));
         m.visible = false;
+        m.userData.flavorIdx = idx;
         minisGroup.add(m);
         return m;
       });
+
+      // ---- tap a can → open its flavor detail ----
+      const raycaster = new THREE.Raycaster();
+      const ndc = new THREE.Vector2();
+      const pickCan = (cx: number, cy: number): number | null => {
+        ndc.x = (cx / window.innerWidth) * 2 - 1;
+        ndc.y = -(cy / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(ndc, camera);
+        const targets: THREE.Object3D[] = [];
+        if (can.visible) targets.push(can);
+        minis.forEach((m) => {
+          if (m.visible) targets.push(m);
+        });
+        const hits = raycaster.intersectObjects(targets, true);
+        if (!hits.length) return null;
+        let o: any = hits[0].object;
+        while (o && o.userData.flavorIdx === undefined) o = o.parent;
+        return o ? (o.userData.flavorIdx as number) : null;
+      };
+      let downX = 0;
+      let downY = 0;
+      onPointerDown = (e: PointerEvent) => {
+        downX = e.clientX;
+        downY = e.clientY;
+      };
+      onPointerUp = (e: PointerEvent) => {
+        if (Math.hypot(e.clientX - downX, e.clientY - downY) > 8) return; // a drag, not a tap
+        const t = e.target as HTMLElement;
+        if (t.closest("button, a, [data-detail-modal]")) return;
+        const idx = pickCan(e.clientX, e.clientY);
+        if (idx !== null) {
+          window.dispatchEvent(
+            new CustomEvent("josjis:open-detail", { detail: idx })
+          );
+        }
+      };
+      window.addEventListener("pointerdown", onPointerDown);
+      window.addEventListener("pointerup", onPointerUp);
 
       // Soft contact shadow follows the can
       const shadowTex = (() => {
@@ -503,6 +546,8 @@ export default function CanScene() {
 
     return () => {
       cancelled = true;
+      if (onPointerDown) window.removeEventListener("pointerdown", onPointerDown);
+      if (onPointerUp) window.removeEventListener("pointerup", onPointerUp);
       try {
         renderer?.setAnimationLoop(null);
         renderer?.dispose?.();

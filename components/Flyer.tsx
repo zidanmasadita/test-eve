@@ -55,7 +55,7 @@ export default function Flyer({ flavor, x, y, onDone }: Props) {
 
   return (
     <div
-      className="pointer-events-none fixed left-0 top-0 z-50"
+      className="pointer-events-none fixed left-0 top-0 z-[70]"
       style={{ transform: `translate(${x - 32}px, ${y - 48}px)` }}
     >
       <div

@@ -9,6 +9,7 @@ import Header from "@/components/Header";
 import FlavorSections from "@/components/FlavorSection";
 import CartDropdown, { type CartItem } from "@/components/CartDropdown";
 import Flyer from "@/components/Flyer";
+import FlavorDetail from "@/components/FlavorDetail";
 import { scrollState } from "@/lib/scrollState";
 import { FLAVORS, type Flavor } from "@/lib/flavors";
 
@@ -26,6 +27,7 @@ export default function Home() {
   const [cartOpen, setCartOpen] = useState(false);
   const [flyers, setFlyers] = useState<FlyerData[]>([]);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [detailIdx, setDetailIdx] = useState<number | null>(null);
   const flyerId = useRef(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -75,10 +77,22 @@ export default function Home() {
     };
   }, [cartOpen]);
 
-  const addToCart = (f: Flavor, e: ReactMouseEvent<HTMLElement>) => {
+  // flavor detail opened by tapping a 3D can
+  useEffect(() => {
+    const h = (e: Event) => {
+      const idx = (e as CustomEvent).detail;
+      if (typeof idx === "number") {
+        setCartOpen(false);
+        setDetailIdx(idx);
+      }
+    };
+    window.addEventListener("josjis:open-detail", h);
+    return () => window.removeEventListener("josjis:open-detail", h);
+  }, []);
+
+  const addToCartWithRect = (f: Flavor, r: DOMRect) => {
     // 1. dropdown opens FIRST so the landing target is visible…
     setCartOpen(true);
-    const r = e.currentTarget.getBoundingClientRect();
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
     // 2. …then the can flies in
@@ -87,6 +101,16 @@ export default function Home() {
       const id = flyerId.current;
       setFlyers((prev) => [...prev, { id, flavor: f, x, y }]);
     }, 220);
+  };
+
+  const addToCart = (f: Flavor, e: ReactMouseEvent<HTMLElement>) => {
+    addToCartWithRect(f, e.currentTarget.getBoundingClientRect());
+  };
+
+  const addToCartFromDetail = (f: Flavor, e: ReactMouseEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setDetailIdx(null); // close the modal first…
+    window.setTimeout(() => addToCartWithRect(f, r), 350); // …then fly
   };
 
   const handleFlyDone = (id: number, f: Flavor) => {
@@ -151,6 +175,14 @@ export default function Home() {
           onDone={() => handleFlyDone(fl.id, fl.flavor)}
         />
       ))}
+
+      {detailIdx !== null && (
+        <FlavorDetail
+          index={detailIdx}
+          onClose={() => setDetailIdx(null)}
+          onAdd={addToCartFromDetail}
+        />
+      )}
 
       <main className="relative">
         {/* HERO — the sky */}
