@@ -414,54 +414,77 @@ export default function CanScene() {
         const p = clamp01(scrollState.progress);
         const q = clamp01(scrollState.finaleProgress);
 
-        // ---- scroll mapping: dwell + travel per flavor ----
-        // Each flavor block is SCREENS tall (see FlavorSection): the first
-        // (SCREENS-1) screens pin the text ("fixed scroll", dwell) while the
-        // can holds its flavor, then travel plays the carousel spin + dive.
-        // This guarantees the next can never appears while its text is on screen.
+        // ---- scroll mapping: dwell + travel per stop ----
+        // The journey has STOPS stops: the 6 flavors plus a bottle showcase
+        // after Cloud Coconut (stop 3). Each stop block is SCREENS tall
+        // (see FlavorSection): the first (SCREENS-1) screens pin the content
+        // ("fixed scroll", dwell) while the can holds still, then travel
+        // plays the carousel spin + dive to the next stop.
         const SCREENS = 1.5;
-        const T = 1 + N * SCREENS; // hero (1 screen) + journey, in screens
+        const STOPS = 7;
+        const BOTTLE_STOP = 3; // cloud coconut (flavor 2) -> bottle -> dusk berry (flavor 3)
+        const T = 1 + STOPS * SCREENS; // hero (1 screen) + journey, in screens
         const d0 = (idx: number) => (1 + idx * SCREENS) / T; // dwell start
         const d1 = (idx: number) => (idx * SCREENS + SCREENS) / T; // dwell end
         const segOf = (pp: number): number => {
           if (pp <= d0(0)) return 0;
-          if (pp >= d1(N - 1)) return N - 1;
-          for (let idx = 0; idx < N - 1; idx++) {
+          if (pp >= d1(STOPS - 1)) return STOPS - 1;
+          for (let idx = 0; idx < STOPS - 1; idx++) {
             if (pp < d0(idx + 1)) {
-              if (pp <= d1(idx)) return idx; // dwell: hold flavor
+              if (pp <= d1(idx)) return idx; // dwell: hold
               const t = (pp - d1(idx)) / (d0(idx + 1) - d1(idx));
               return idx + smooth(t); // travel: spin then dive
             }
           }
-          return N - 1;
+          return STOPS - 1;
         };
         const seg = segOf(p);
-        const i = Math.min(Math.floor(seg), N - 1);
-        const f = seg - i;
+        const s = Math.min(Math.floor(seg), STOPS - 1); // stop index
+        const fr = seg - s; // 0..1 across the travel
 
         // ---- can choreography ----
-        // Dwell (text pinned): can holds its flavor, perfectly still.
-        // Travel: Phase A (f: 0 → 0.45) carousel spin in place — the label
+        // Dwell: can holds still (or parked below during the bottle stop).
+        // Travel: Phase A (fr: 0 → 0.45) carousel spin in place — the label
         //   swaps exactly when the back faces the camera, so the swap is
-        //   never seen. Phase B (f: 0.45 → 1) dives down + across to the
-        //   next zigzag slot.
-        const spinT = smooth(f / 0.45);
-        const moveT = smooth((f - 0.45) / 0.55);
+        //   never seen. Phase B (fr: 0.45 → 1) dives to the next stop.
+        //   Cloud Coconut dives down off-screen for the bottle showcase,
+        //   then rises back as Dusk Berry.
+        const spinT = smooth(fr / 0.45);
+        const moveT = smooth((fr - 0.45) / 0.55);
+        const flavorAtStop = (stop: number) => (stop < BOTTLE_STOP ? stop : stop - 1);
+        const DIVE = 8; // how far below the screen the can parks for the bottle
 
         // background crossfade (follows the dive, not the spin)
-        setPlaneFlavor(planeA, i);
-        planeA.mat.opacity = 1;
-        if (i < N - 1) {
-          setPlaneFlavor(planeB, i + 1);
-          planeB.mat.opacity = moveT;
+        let bgA = 0,
+          bgB = 0,
+          bgOp = 0;
+        if (s <= 1) {
+          bgA = s;
+          bgB = s + 1;
+          bgOp = moveT;
+        } else if (s === 2) {
+          bgA = 2;
+          bgB = 2;
+          bgOp = 0;
+        } else if (s === BOTTLE_STOP) {
+          bgA = 2;
+          bgB = 3;
+          bgOp = fr === 0 ? 0 : moveT;
         } else {
-          planeB.mat.opacity = 0;
+          bgA = s - 1;
+          bgB = Math.min(s, N - 1);
+          bgOp = moveT;
         }
+        setPlaneFlavor(planeA, bgA);
+        planeA.mat.opacity = 1;
+        setPlaneFlavor(planeB, bgB);
+        planeB.mat.opacity = bgOp;
 
-        if (i !== lastActive) {
-          lastActive = i;
-          scrollState.activeFlavor = i;
-          const acc = new THREE.Color(FLAVORS[i].can.accent);
+        const tintIdx = s <= 3 ? Math.min(s, 2) : s - 1;
+        if (tintIdx !== lastActive) {
+          lastActive = tintIdx;
+          scrollState.activeFlavor = tintIdx;
+          const acc = new THREE.Color(FLAVORS[tintIdx].can.accent);
           (pMat.color as THREE.Color).copy(acc).lerp(new THREE.Color(0xffffff), 0.4);
         }
 
@@ -477,23 +500,45 @@ export default function CanScene() {
         const amp = camera.aspect >= 1 ? 1.9 : 0.85;
         const slotX = (idx: number) => (idx % 2 === 0 ? amp : -amp);
         const bigScale = Math.max(1 - exitT, 0.0001);
+        const baseY = Math.sin(elapsed * 1.1) * 0.1 + lerp(0.15, -0.15, p);
         can.visible = exitT < 0.98;
         popT = Math.min(popT + dt / 0.5, 1);
         can.scale.setScalar(bigScale * (0.94 + 0.06 * backOut(popT)));
-        can.rotation.y =
-          Math.PI + (i + spinT) * Math.PI * 2 + exitT * Math.PI * 2;
-        can.position.x = lerp(slotX(i), slotX(Math.min(i + 1, N - 1)), moveT);
-        can.position.y =
-          Math.sin(elapsed * 1.1) * 0.1 +
-          lerp(0.15, -0.15, p) -
-          Math.sin(moveT * Math.PI) * 0.45 +
-          exitT * 1.4;
+
+        if (s === BOTTLE_STOP && fr === 0) {
+          // bottle showcase: can parked below the screen
+          can.position.set(slotX(2), baseY - DIVE, 0);
+          can.rotation.y = Math.PI;
+        } else if (s === 2) {
+          // cloud coconut: carousel spin, then dive down off-screen
+          can.rotation.y = Math.PI + (2 + spinT) * Math.PI * 2;
+          can.position.x = slotX(2);
+          can.position.y = baseY - moveT * DIVE;
+        } else if (s === BOTTLE_STOP) {
+          // bottle -> dusk berry: rise back up into the left slot with a flourish
+          can.rotation.y = Math.PI + (3 + spinT) * Math.PI * 2;
+          can.position.x = lerp(slotX(2), slotX(3), moveT);
+          can.position.y =
+            lerp(baseY - DIVE, baseY, moveT) - Math.sin(moveT * Math.PI) * 0.3;
+        } else {
+          const fIdx = flavorAtStop(s);
+          can.rotation.y =
+            Math.PI + (fIdx + spinT) * Math.PI * 2 + exitT * Math.PI * 2;
+          can.position.x = lerp(slotX(fIdx), slotX(Math.min(fIdx + 1, N - 1)), moveT);
+          can.position.y =
+            baseY - Math.sin(moveT * Math.PI) * 0.45 + exitT * 1.4;
+        }
         can.rotation.x = lerp(0.05, -0.05, p) + Math.sin(elapsed * 0.7) * 0.02;
         shadow.position.x = can.position.x;
-        shadow.visible = exitT < 0.5;
+        shadow.visible = exitT < 0.5 && can.position.y > -2.5;
 
         // carousel swap — hidden mid-spin (skipped once the finale takes over)
-        if (q < 0.05) setLabel(Math.min(i + (spinT >= 0.5 ? 1 : 0), N - 1), true);
+        if (q < 0.05) {
+          if (s <= 1) setLabel(Math.min(s + (spinT >= 0.5 ? 1 : 0), N - 1), true);
+          else if (s === 2) setLabel(2, false);
+          else if (s === BOTTLE_STOP) setLabel(3, false);
+          else setLabel(Math.min(s - 1 + (spinT >= 0.5 ? 1 : 0), N - 1), true);
+        }
 
         // mini cans pop in staggered, gently bobbing + slow turntable
         minisGroup.visible = q > 0.002;
