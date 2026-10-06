@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { FLAVORS, formatIDR, type Flavor } from "@/lib/flavors";
@@ -14,7 +14,7 @@ function Card({
 }: {
   flavor: Flavor;
   align: "left" | "right";
-  onAdd: () => void;
+  onAdd: (f: Flavor, e: ReactMouseEvent<HTMLElement>) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -76,7 +76,7 @@ function Card({
               </span>
             </span>
             <button
-              onClick={onAdd}
+              onClick={(e) => onAdd(flavor, e)}
               className="rounded-full bg-white px-7 py-3 font-display text-base font-bold text-black shadow-xl transition hover:scale-105 active:scale-95"
             >
               Add to Cart
@@ -88,11 +88,11 @@ function Card({
   );
 }
 
-export default function FlavorSections({ onAdd }: { onAdd: (f: Flavor) => void }) {
+export default function FlavorSections({ onAdd }: { onAdd: (f: Flavor, e: ReactMouseEvent<HTMLElement>) => void }) {
   return (
     <>
       {FLAVORS.map((f) => (
-        <Card key={f.id} flavor={f} align={f.index % 2 === 0 ? "left" : "right"} onAdd={() => onAdd(f)} />
+        <Card key={f.id} flavor={f} align={f.index % 2 === 0 ? "left" : "right"} onAdd={(fl, e) => onAdd(fl, e)} />
       ))}
     </>
   );

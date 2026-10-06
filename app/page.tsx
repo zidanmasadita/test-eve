@@ -1,20 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import SmoothScroll from "@/components/SmoothScroll";
 import CanScene from "@/components/CanScene";
 import Header from "@/components/Header";
 import FlavorSections from "@/components/FlavorSection";
+import CartDropdown, { type CartItem } from "@/components/CartDropdown";
+import Flyer from "@/components/Flyer";
 import { scrollState } from "@/lib/scrollState";
 import { FLAVORS, type Flavor } from "@/lib/flavors";
 
 gsap.registerPlugin(ScrollTrigger);
 
+interface FlyerData {
+  id: number;
+  flavor: Flavor;
+  x: number;
+  y: number;
+}
+
 export default function Home() {
-  const [cart, setCart] = useState(0);
-  const [lastAdded, setLastAdded] = useState<string | null>(null);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [flyers, setFlyers] = useState<FlyerData[]>([]);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const flyerId = useRef(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const cartCount = cartItems.reduce((s, it) => s + it.qty, 0);
 
   useEffect(() => {
     const st = ScrollTrigger.create({
@@ -41,22 +56,101 @@ export default function Home() {
     };
   }, []);
 
-  const addToCart = (f: Flavor) => {
-    setCart((c) => c + 1);
-    setLastAdded(f.name);
-    window.setTimeout(() => setLastAdded(null), 2200);
+  // close dropdown on outside click / Escape
+  useEffect(() => {
+    if (!cartOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (dropdownRef.current?.contains(e.target as Node)) return;
+      if ((e.target as HTMLElement).closest?.("#cart-button")) return;
+      setCartOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCartOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [cartOpen]);
+
+  const addToCart = (f: Flavor, e: ReactMouseEvent<HTMLElement>) => {
+    // 1. dropdown opens FIRST so the landing target is visible…
+    setCartOpen(true);
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    // 2. …then the can flies in
+    window.setTimeout(() => {
+      flyerId.current += 1;
+      const id = flyerId.current;
+      setFlyers((prev) => [...prev, { id, flavor: f, x, y }]);
+    }, 220);
   };
+
+  const handleFlyDone = (id: number, f: Flavor) => {
+    setFlyers((prev) => prev.filter((fl) => fl.id !== id));
+    setCartItems((prev) => {
+      const ex = prev.find((it) => it.flavor.id === f.id);
+      if (ex) {
+        return prev.map((it) =>
+          it.flavor.id === f.id ? { ...it, qty: it.qty + 1 } : it
+        );
+      }
+      return [...prev, { flavor: f, qty: 1 }];
+    });
+    setHighlightId(f.id);
+    window.setTimeout(
+      () => setHighlightId((h) => (h === f.id ? null : h)),
+      1300
+    );
+  };
+
+  const incQty = (id: string) =>
+    setCartItems((prev) =>
+      prev.map((it) =>
+        it.flavor.id === id ? { ...it, qty: it.qty + 1 } : it
+      )
+    );
+  const decQty = (id: string) =>
+    setCartItems((prev) =>
+      prev
+        .map((it) =>
+          it.flavor.id === id ? { ...it, qty: it.qty - 1 } : it
+        )
+        .filter((it) => it.qty > 0)
+    );
+  const removeItem = (id: string) =>
+    setCartItems((prev) => prev.filter((it) => it.flavor.id !== id));
 
   return (
     <SmoothScroll>
       <CanScene />
-      <Header cart={cart} />
+      <Header count={cartCount} onCartClick={() => setCartOpen((o) => !o)} />
 
-      {lastAdded && (
-        <div className="fixed bottom-8 left-1/2 z-30 -translate-x-1/2 rounded-full bg-white px-6 py-3 text-sm font-bold text-black shadow-2xl">
-          {lastAdded} added to cart!
+      {cartOpen && (
+        <div ref={dropdownRef}>
+          <CartDropdown
+            items={cartItems}
+            highlightId={highlightId}
+            onInc={incQty}
+            onDec={decQty}
+            onRemove={removeItem}
+            onClose={() => setCartOpen(false)}
+          />
         </div>
       )}
+
+      {flyers.map((fl) => (
+        <Flyer
+          key={fl.id}
+          flavor={fl.flavor}
+          x={fl.x}
+          y={fl.y}
+          onDone={() => handleFlyDone(fl.id, fl.flavor)}
+        />
+      ))}
 
       <main className="relative">
         {/* HERO — the sky */}
@@ -113,7 +207,7 @@ export default function Home() {
             {FLAVORS.map((f) => (
               <button
                 key={f.id}
-                onClick={() => addToCart(f)}
+                onClick={(e) => addToCart(f, e)}
                 className="rounded-full border border-white/40 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-md transition hover:scale-105 hover:bg-white hover:text-black"
               >
                 {f.name}
@@ -121,9 +215,9 @@ export default function Home() {
             ))}
           </div>
           <p className="mt-8 text-white/70">
-            {cart === 0
+            {cartCount === 0
               ? "Your cart is still empty."
-              : `${cart} can${cart > 1 ? "s" : ""} in your cart — checkout coming soon!`}
+              : `${cartCount} can${cartCount > 1 ? "s" : ""} in your cart — checkout coming soon!`}
           </p>
         </section>
 
