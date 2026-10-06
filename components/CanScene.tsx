@@ -245,6 +245,93 @@ export default function CanScene() {
         return m;
       });
 
+      // ---- bottle: the real 2D cloud coconut label wrapped on a 3D contour bottle ----
+      const bottleBodyMat: any = isWebGPU
+        ? new THREE.MeshStandardNodeMaterial({
+            color: 0xf2f7fb,
+            roughness: 0.35,
+            metalness: 0.1,
+          })
+        : new THREE.MeshStandardMaterial({
+            color: 0xf2f7fb,
+            roughness: 0.35,
+            metalness: 0.1,
+          });
+      const frost: any = isWebGPU
+        ? new THREE.MeshStandardNodeMaterial({
+            color: 0xeaf2f8,
+            roughness: 0.45,
+            metalness: 0.05,
+          })
+        : new THREE.MeshStandardMaterial({
+            color: 0xeaf2f8,
+            roughness: 0.45,
+            metalness: 0.05,
+          });
+      const capMat: any = isWebGPU
+        ? new THREE.MeshStandardNodeMaterial({
+            color: 0x1e5aa8,
+            roughness: 0.3,
+            metalness: 0.6,
+          })
+        : new THREE.MeshStandardMaterial({
+            color: 0x1e5aa8,
+            roughness: 0.3,
+            metalness: 0.6,
+          });
+      const bottleImg = new Image();
+      bottleImg.onload = () => {
+        bottleBodyMat.map = seamlessTex(bottleImg);
+        bottleBodyMat.needsUpdate = true;
+      };
+      bottleImg.src = "/bottles/label-cloud-coconut.jpg";
+
+      const bottle = new THREE.Group();
+      const bBody = new THREE.Mesh(
+        new THREE.CylinderGeometry(1, 1, 2.0, 64, 1, true),
+        bottleBodyMat
+      );
+      bottle.add(bBody);
+      const bShoulder = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.36, 1, 0.55, 64, 1, true),
+        frost
+      );
+      bShoulder.position.y = 1.275;
+      bottle.add(bShoulder);
+      const bNeck = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.36, 0.36, 0.42, 48),
+        frost
+      );
+      bNeck.position.y = 1.76;
+      bottle.add(bNeck);
+      const bNeckRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.36, 0.035, 12, 48),
+        frost
+      );
+      bNeckRing.rotation.x = Math.PI / 2;
+      bNeckRing.position.y = 1.97;
+      bottle.add(bNeckRing);
+      const bCap = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 0.4, 0.34, 48),
+        capMat
+      );
+      bCap.position.y = 2.14;
+      bottle.add(bCap);
+      const bBaseRim = new THREE.Mesh(
+        new THREE.TorusGeometry(0.96, 0.05, 16, 72),
+        frost
+      );
+      bBaseRim.rotation.x = Math.PI / 2;
+      bBaseRim.position.y = -1.0;
+      bottle.add(bBaseRim);
+      const bBottom = new THREE.Mesh(new THREE.CircleGeometry(0.96, 72), frost);
+      bBottom.rotation.x = Math.PI / 2;
+      bBottom.position.y = -1.0;
+      bottle.add(bBottom);
+      bottle.userData.flavorIdx = 2; // cloud coconut
+      bottle.visible = false;
+      scene.add(bottle);
+
       // ---- tap a can → open its flavor detail ----
       const raycaster = new THREE.Raycaster();
       const ndc = new THREE.Vector2();
@@ -254,6 +341,7 @@ export default function CanScene() {
         raycaster.setFromCamera(ndc, camera);
         const targets: THREE.Object3D[] = [];
         if (can.visible) targets.push(can);
+        if (bottle.visible) targets.push(bottle);
         minis.forEach((m) => {
           if (m.visible) targets.push(m);
         });
@@ -505,6 +593,22 @@ export default function CanScene() {
         popT = Math.min(popT + dt / 0.5, 1);
         can.scale.setScalar(bigScale * (0.94 + 0.06 * backOut(popT)));
 
+        // bottle swap sequencing: sink the can first, then raise the bottle
+        // (and reverse on the way out) so the two never collide
+        const sinkT = smooth(clamp01(moveT * 2));
+        const riseT = smooth(clamp01(moveT * 2 - 1));
+        const bottleX = camera.aspect >= 1 ? amp : 0;
+        const bottleActive = (s === 2 && fr > 0) || s === BOTTLE_STOP;
+        bottle.visible = bottleActive && q < 0.02;
+        if (bottle.visible) {
+          const bY =
+            s === 2
+              ? lerp(baseY - DIVE, baseY, riseT)
+              : lerp(baseY, baseY - DIVE, sinkT);
+          bottle.position.set(bottleX, bY + Math.sin(elapsed * 1.3) * 0.06, 0);
+          bottle.rotation.y = Math.PI + elapsed * 0.6; // slow showcase turntable
+        }
+
         if (s === BOTTLE_STOP && fr === 0) {
           // bottle showcase: can parked below the screen
           can.position.set(slotX(2), baseY - DIVE, 0);
@@ -513,13 +617,13 @@ export default function CanScene() {
           // cloud coconut: carousel spin, then dive down off-screen
           can.rotation.y = Math.PI + (2 + spinT) * Math.PI * 2;
           can.position.x = slotX(2);
-          can.position.y = baseY - moveT * DIVE;
+          can.position.y = baseY - sinkT * DIVE;
         } else if (s === BOTTLE_STOP) {
-          // bottle -> dusk berry: rise back up into the left slot with a flourish
-          can.rotation.y = Math.PI + (3 + spinT) * Math.PI * 2;
-          can.position.x = lerp(slotX(2), slotX(3), moveT);
+          // bottle sinks away, then the can rises back as dusk berry
+          can.rotation.y = Math.PI + (3 + spinT + riseT) * Math.PI * 2;
+          can.position.x = lerp(slotX(2), slotX(3), riseT);
           can.position.y =
-            lerp(baseY - DIVE, baseY, moveT) - Math.sin(moveT * Math.PI) * 0.3;
+            lerp(baseY - DIVE, baseY, riseT) - Math.sin(riseT * Math.PI) * 0.3;
         } else {
           const fIdx = flavorAtStop(s);
           can.rotation.y =
@@ -529,8 +633,11 @@ export default function CanScene() {
             baseY - Math.sin(moveT * Math.PI) * 0.45 + exitT * 1.4;
         }
         can.rotation.x = lerp(0.05, -0.05, p) + Math.sin(elapsed * 0.7) * 0.02;
-        shadow.position.x = can.position.x;
-        shadow.visible = exitT < 0.5 && can.position.y > -2.5;
+        const bottleShadow =
+          bottle.visible && (s === BOTTLE_STOP || (s === 2 && riseT > 0.5));
+        shadow.position.x = bottleShadow ? bottleX : can.position.x;
+        shadow.visible =
+          exitT < 0.5 && (bottleShadow || can.position.y > -2.5);
 
         // carousel swap — hidden mid-spin (skipped once the finale takes over)
         if (q < 0.05) {

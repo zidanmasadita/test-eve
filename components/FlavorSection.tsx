@@ -116,16 +116,12 @@ function BottleShowcase({
     return () => ctx.revert();
   }, []);
 
-  const openDetail = () => {
-    window.dispatchEvent(new CustomEvent("josjis:open-detail", { detail: 2 }));
-  };
-
   return (
     <div ref={ref} className="relative h-[150vh]">
-      {/* pinned showcase: the 3D can dives away, the contour bottle takes over */}
-      <div className="sticky top-0 flex h-screen items-center px-6 md:px-0">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 md:flex-row md:gap-12">
-          <div className="reveal w-full max-w-md text-center [text-shadow:0_2px_24px_rgba(0,0,0,0.55)] md:pl-16 md:text-left lg:pl-24">
+      {/* pinned showcase: the 3D can dives away, the 3D contour bottle
+          (real label wrapped on a cylinder) takes over */}
+      <div className="sticky top-0 flex h-screen items-start px-6 pt-24 md:items-center md:px-0 md:pt-0">
+        <div className="reveal w-full max-w-md [text-shadow:0_2px_24px_rgba(0,0,0,0.55)] md:pl-16 lg:pl-24">
             <p className="reveal text-sm font-extrabold uppercase tracking-[0.35em] text-white/85">
               Same flavor, new shape
             </p>
@@ -147,15 +143,6 @@ function BottleShowcase({
             <p className="reveal mt-4 text-xs font-semibold uppercase tracking-widest text-white/60">
               Tap the bottle for the full flavor story
             </p>
-          </div>
-          <div className="reveal flex flex-1 justify-center md:justify-end md:pr-16 lg:pr-24">
-            <img
-              src="/bottles/cloud-coconut.webp"
-              alt="JosJis Cloud Coconut contour bottle"
-              onClick={openDetail}
-              className="h-[42vh] w-auto cursor-pointer object-contain drop-shadow-2xl transition hover:scale-[1.03] md:h-[68vh]"
-            />
-          </div>
         </div>
       </div>
     </div>
