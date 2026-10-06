@@ -103,7 +103,7 @@ export default function CanScene() {
       rim.position.set(-5, 2, -4);
       scene.add(rim);
 
-      // ---- Can factory: one can per flavor (carousel) ----
+      // ---- The one can ----
       const N = FLAVORS.length;
       const R = 1;
       const H = 2.7;
@@ -115,32 +115,50 @@ export default function CanScene() {
         return t;
       };
 
+      const bodyMat: any = isWebGPU
+        ? new THREE.MeshStandardNodeMaterial({ roughness: 0.32, metalness: 0.55 })
+        : new THREE.MeshStandardMaterial({ roughness: 0.32, metalness: 0.55 });
+
+      // label textures: procedural instantly, AI artwork swaps in when loaded
+      const labelCache = new Map<number, THREE.Texture>();
       const labelLoading = new Set<number>();
-      const makeBodyMaterial = (idx: number): any => {
-        const mat: any = isWebGPU
-          ? new THREE.MeshStandardNodeMaterial({
-              roughness: 0.32,
-              metalness: 0.55,
-            })
-          : new THREE.MeshStandardMaterial({
-              roughness: 0.32,
-              metalness: 0.55,
-            });
-        // procedural placeholder instantly, AI label swaps in when loaded
-        mat.map = seamlessTex(makeLabelTexture(FLAVORS[idx]));
-        mat.needsUpdate = true;
-        if (!labelLoading.has(idx)) {
-          labelLoading.add(idx);
-          const img = new Image();
-          img.onload = () => {
-            mat.map = seamlessTex(img);
-            mat.needsUpdate = true;
-            labelLoading.delete(idx);
-          };
-          img.onerror = () => labelLoading.delete(idx);
-          img.src = FLAVORS[idx].label;
+      const labelTex = (idx: number): THREE.Texture => {
+        let t = labelCache.get(idx);
+        if (!t) {
+          t = seamlessTex(makeLabelTexture(FLAVORS[idx]));
+          labelCache.set(idx, t);
+          if (!labelLoading.has(idx)) {
+            labelLoading.add(idx);
+            const img = new Image();
+            img.onload = () => {
+              const loaded = seamlessTex(img);
+              labelCache.set(idx, loaded);
+              if (shownLabel === idx) {
+                bodyMat.map = loaded;
+                bodyMat.needsUpdate = true;
+              }
+              labelLoading.delete(idx);
+            };
+            img.onerror = () => labelLoading.delete(idx);
+            img.src = FLAVORS[idx].label;
+          }
         }
-        return mat;
+        return t;
+      };
+
+      let shownLabel = -1;
+      const setLabel = (idx: number, pop: boolean) => {
+        if (idx === shownLabel) return;
+        shownLabel = idx;
+        bodyMat.map = labelTex(idx);
+        bodyMat.needsUpdate = true;
+        if (pop) {
+          gsap.fromTo(
+            can.scale,
+            { x: 0.94, y: 0.94, z: 0.94 },
+            { x: 1, y: 1, z: 1, duration: 0.5, ease: "back.out(2)" }
+          );
+        }
       };
 
       const silver: any = isWebGPU
@@ -155,50 +173,44 @@ export default function CanScene() {
             metalness: 0.95,
           });
 
-      // shared geometries
-      const geoBody = new THREE.CylinderGeometry(R, R, H, 72, 1, true);
-      const geoShoulder = new THREE.CylinderGeometry(R * 0.86, R, 0.32, 72, 1, true);
-      const geoLid = new THREE.CircleGeometry(R * 0.86, 72);
-      const geoLidRim = new THREE.TorusGeometry(R * 0.86, 0.045, 16, 72);
-      const geoTab = new THREE.TorusGeometry(0.09, 0.028, 12, 24);
-      const geoBotRim = new THREE.TorusGeometry(R * 0.96, 0.05, 16, 72);
-      const geoBottom = new THREE.CircleGeometry(R * 0.96, 72);
+      const can = new THREE.Group();
+      can.add(new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 72, 1, true), bodyMat));
+      const shoulder = new THREE.Mesh(
+        new THREE.CylinderGeometry(R * 0.86, R, 0.32, 72, 1, true),
+        silver
+      );
+      shoulder.position.y = H / 2 + 0.16;
+      can.add(shoulder);
+      const lid = new THREE.Mesh(new THREE.CircleGeometry(R * 0.86, 72), silver);
+      lid.rotation.x = -Math.PI / 2;
+      lid.position.y = H / 2 + 0.32;
+      can.add(lid);
+      const lidRim = new THREE.Mesh(
+        new THREE.TorusGeometry(R * 0.86, 0.045, 16, 72),
+        silver
+      );
+      lidRim.rotation.x = Math.PI / 2;
+      lidRim.position.y = H / 2 + 0.32;
+      can.add(lidRim);
+      const tab = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.028, 12, 24), silver);
+      tab.rotation.x = Math.PI / 2;
+      tab.position.set(0.18, H / 2 + 0.345, 0);
+      can.add(tab);
+      const botRim = new THREE.Mesh(
+        new THREE.TorusGeometry(R * 0.96, 0.05, 16, 72),
+        silver
+      );
+      botRim.rotation.x = Math.PI / 2;
+      botRim.position.y = -H / 2;
+      can.add(botRim);
+      const bottom = new THREE.Mesh(new THREE.CircleGeometry(R * 0.96, 72), silver);
+      bottom.rotation.x = Math.PI / 2;
+      bottom.position.y = -H / 2;
+      can.add(bottom);
+      scene.add(can);
+      setLabel(0, false);
 
-      const buildCan = (idx: number) => {
-        const can = new THREE.Group();
-        const bodyMat = makeBodyMaterial(idx);
-        can.add(new THREE.Mesh(geoBody, bodyMat));
-        const shoulder = new THREE.Mesh(geoShoulder, silver);
-        shoulder.position.y = H / 2 + 0.16;
-        can.add(shoulder);
-        const lid = new THREE.Mesh(geoLid, silver);
-        lid.rotation.x = -Math.PI / 2;
-        lid.position.y = H / 2 + 0.32;
-        can.add(lid);
-        const lidRim = new THREE.Mesh(geoLidRim, silver);
-        lidRim.rotation.x = Math.PI / 2;
-        lidRim.position.y = H / 2 + 0.32;
-        can.add(lidRim);
-        const tab = new THREE.Mesh(geoTab, silver);
-        tab.rotation.x = Math.PI / 2;
-        tab.position.set(0.18, H / 2 + 0.345, 0);
-        can.add(tab);
-        const botRim = new THREE.Mesh(geoBotRim, silver);
-        botRim.rotation.x = Math.PI / 2;
-        botRim.position.y = -H / 2;
-        can.add(botRim);
-        const bottom = new THREE.Mesh(geoBottom, silver);
-        bottom.rotation.x = Math.PI / 2;
-        bottom.position.y = -H / 2;
-        can.add(bottom);
-        can.rotation.y = Math.PI; // label faces camera
-        scene.add(can);
-        return can;
-      };
-
-      const cans = FLAVORS.map((_, idx) => buildCan(idx));
-
-      // Soft contact shadow follows the focused can
+      // Soft contact shadow follows the can
       const shadowTex = (() => {
         const c = document.createElement("canvas");
         c.width = c.height = 128;
@@ -338,7 +350,6 @@ export default function CanScene() {
           planeB.mat.opacity = 0;
         }
 
-        // particle tint follows active flavor
         if (i !== lastActive) {
           lastActive = i;
           scrollState.activeFlavor = i;
@@ -346,26 +357,26 @@ export default function CanScene() {
           (pMat.color as THREE.Color).copy(acc).lerp(new THREE.Color(0xffffff), 0.4);
         }
 
-        // ---- carousel ----
+        // ---- can choreography per segment ----
+        // Phase A (f: 0 → 0.45): carousel spin in place.
+        //   Label swaps exactly when the back faces the camera — the swap is invisible.
+        // Phase B (f: 0.45 → 1): dive down + across to the next zigzag slot.
+        const spinT = smooth(f / 0.45);
+        const moveT = smooth((f - 0.45) / 0.55);
+        can.rotation.y = Math.PI + (i + spinT) * Math.PI * 2;
+
         const amp = camera.aspect >= 1 ? 1.9 : 0.85;
         const slotX = (idx: number) => (idx % 2 === 0 ? amp : -amp);
-        // focus slot eases between zigzag sides during transition
-        const slotPos = lerp(slotX(i), slotX(Math.min(i + 1, N - 1)), smooth(f));
-        const S = 2 * amp + 2.2; // filmstrip spacing
-        const dipY = -Math.sin(f * Math.PI) * 0.35;
-        const baseY = Math.sin(elapsed * 1.1) * 0.1 + lerp(0.15, -0.15, p);
+        can.position.x = lerp(slotX(i), slotX(Math.min(i + 1, N - 1)), moveT);
+        can.position.y =
+          Math.sin(elapsed * 1.1) * 0.1 +
+          lerp(0.15, -0.15, p) -
+          Math.sin(moveT * Math.PI) * 0.45;
+        can.rotation.x = lerp(0.05, -0.05, p) + Math.sin(elapsed * 0.7) * 0.02;
+        shadow.position.x = can.position.x;
 
-        cans.forEach((can, k) => {
-          // filmstrip: upcoming cans wait left, past cans exit right
-          can.position.x = slotPos - (k - seg) * S;
-          can.position.y = baseY + dipY;
-          // entrance spin: one full turn, landing label-forward
-          const t0 = k === 0 ? 0 : k - 1;
-          const span = k === 0 ? 0.25 : 0.6;
-          can.rotation.y = Math.PI + (1 - smooth((seg - t0) / span)) * Math.PI * 2;
-          can.rotation.x = lerp(0.05, -0.05, p) + Math.sin(elapsed * 0.7 + k) * 0.02;
-        });
-        shadow.position.x = slotPos;
+        // carousel swap — hidden mid-spin
+        setLabel(Math.min(i + (spinT >= 0.5 ? 1 : 0), N - 1), true);
 
         camera.position.y = lerp(0.25, -0.35, p);
         camera.lookAt(0, lerp(0.1, -0.1, p), 0);
