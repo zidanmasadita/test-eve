@@ -336,7 +336,9 @@ export default function CanScene() {
         );
         const p = clamp01(scrollState.progress);
 
-        const seg = p * (N - 1);
+        // Map scroll so the can's flavor matches the text section centered
+        // in the viewport: section i centers at p = (i+1)/(N+1).
+        const seg = Math.min(Math.max((N + 1) * p - 1, 0), N - 1);
         const i = Math.min(Math.floor(seg), N - 1);
         const f = seg - i;
 

@@ -54,7 +54,7 @@ export default function Home() {
           <p className="text-sm font-bold uppercase tracking-[0.5em] text-white/70">
             Premium Canned Drinks
           </p>
-          <h1 className="mt-6 max-w-4xl text-6xl font-black leading-tight text-white drop-shadow-2xl md:text-8xl">
+          <h1 className="mt-6 max-w-4xl font-display text-6xl font-extrabold leading-tight text-white drop-shadow-2xl md:text-8xl">
             From Sky
             <br />
             to Earth
@@ -82,7 +82,7 @@ export default function Home() {
           className="flex min-h-screen items-center justify-center px-6"
         >
           <div className="max-w-2xl rounded-3xl bg-black/25 p-10 text-center backdrop-blur-xl">
-            <h2 className="text-4xl font-black text-white md:text-5xl">
+            <h2 className="font-display text-4xl font-extrabold text-white md:text-5xl">
               Why JosJis?
             </h2>
             <p className="mt-6 leading-relaxed text-white/85">
@@ -100,7 +100,7 @@ export default function Home() {
           id="beli"
           className="flex min-h-screen flex-col items-center justify-center px-6 text-center"
         >
-          <h2 className="max-w-3xl text-5xl font-black text-white drop-shadow-2xl md:text-7xl">
+          <h2 className="max-w-3xl font-display text-5xl font-extrabold text-white drop-shadow-2xl md:text-7xl">
             Touchdown.
             <br />
             Pick your flavor.

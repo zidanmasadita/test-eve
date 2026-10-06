@@ -38,30 +38,46 @@ function Card({
     return () => ctx.revert();
   }, []);
 
+  const right = align === "right";
+
   return (
     <div
       ref={ref}
       id={`rasa-${flavor.index}`}
-      className={`flex min-h-screen items-center px-6 md:px-16 ${
-        align === "left" ? "justify-start" : "justify-end"
+      className={`flex min-h-screen px-6 pt-24 md:px-0 md:pt-0 ${
+        right
+          ? "items-start justify-center md:items-center md:justify-end md:pr-16 lg:pr-28"
+          : "items-start justify-center md:items-center md:justify-start md:pl-16 lg:pl-28"
       }`}
     >
-      <div className="reveal max-w-md rounded-3xl bg-black/25 p-8 backdrop-blur-xl md:p-10">
-        <p className="reveal text-sm font-bold uppercase tracking-[0.35em] text-white/70">
+      <div
+        className={`reveal w-full max-w-md [text-shadow:0_2px_24px_rgba(0,0,0,0.55)] ${
+          right ? "md:text-right" : ""
+        }`}
+      >
+        <p className="reveal text-sm font-extrabold uppercase tracking-[0.35em] text-white/85">
           {flavor.tagline}
         </p>
-        <h2 className="reveal mt-3 text-5xl font-black text-white drop-shadow-xl md:text-6xl">
+        <h2 className="reveal mt-3 font-display text-6xl font-extrabold leading-[0.95] text-white md:text-7xl">
           {flavor.name}
         </h2>
-        <p className="reveal mt-4 leading-relaxed text-white/85">{flavor.description}</p>
-        <div className="reveal mt-6 flex items-center justify-between">
-          <span className="text-2xl font-extrabold text-white">
+        <p className="reveal mt-5 text-lg leading-relaxed text-white/90">
+          {flavor.description}
+        </p>
+        <div
+          className={`reveal mt-8 flex flex-wrap items-center gap-4 ${
+            right ? "md:justify-end" : ""
+          }`}
+        >
+          <span className="font-display text-3xl font-extrabold text-white">
             {formatIDR(flavor.price)}
-            <span className="text-sm font-normal text-white/60"> /can</span>
+            <span className="ml-1 align-middle font-sans text-sm font-bold text-white/70">
+              /can
+            </span>
           </span>
           <button
             onClick={onAdd}
-            className="rounded-full bg-white px-6 py-3 text-sm font-bold text-black shadow-xl transition hover:scale-105 active:scale-95"
+            className="rounded-full bg-white px-7 py-3 font-display text-base font-bold text-black shadow-xl transition hover:scale-105 active:scale-95"
           >
             Add to Cart
           </button>
