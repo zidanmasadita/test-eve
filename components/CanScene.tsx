@@ -9,6 +9,10 @@ import { scrollState } from "@/lib/scrollState";
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
+const smooth = (t: number) => {
+  const c = clamp01(t);
+  return c * c * (3 - 2 * c);
+};
 
 /**
  * Blend the left edge with the right edge so the texture wraps around
@@ -26,7 +30,6 @@ function makeSeamless(
   const ctx = cv.getContext("2d")!;
   ctx.drawImage(src, 0, 0);
   const blendPx = Math.max(8, Math.floor(w * blendRatio));
-  // crossfade: paint the right-edge strip over the left edge through a gradient mask
   const strip = document.createElement("canvas");
   strip.width = blendPx;
   strip.height = h;
@@ -100,63 +103,45 @@ export default function CanScene() {
       rim.position.set(-5, 2, -4);
       scene.add(rim);
 
-      // ---- The can ----
-      const can = new THREE.Group();
+      // ---- Can factory: one can per flavor (carousel) ----
+      const N = FLAVORS.length;
       const R = 1;
       const H = 2.7;
 
-      // Label textures: procedural canvas instantly, AI artwork swaps in when loaded.
-      // Both go through makeSeamless so the wrap has no visible cut.
-      let shownFlavor = -1;
-      const labelCache = new Map<number, THREE.Texture>();
-      const labelLoading = new Set<number>();
-      const texLoader = new THREE.TextureLoader();
       const seamlessTex = (src: HTMLImageElement | HTMLCanvasElement) => {
         const t = new THREE.CanvasTexture(makeSeamless(src));
         t.colorSpace = THREE.SRGBColorSpace;
         t.anisotropy = 8;
         return t;
       };
-      const labelTex = (idx: number): THREE.Texture => {
-        let t = labelCache.get(idx);
-        if (!t) {
-          t = seamlessTex(makeLabelTexture(FLAVORS[idx]));
-          labelCache.set(idx, t);
-          if (!labelLoading.has(idx)) {
-            labelLoading.add(idx);
-            const img = new Image();
-            img.onload = () => {
-              const loaded = seamlessTex(img);
-              labelCache.set(idx, loaded);
-              if (shownFlavor === idx) {
-                bodyMat.map = loaded;
-                bodyMat.needsUpdate = true;
-              }
-              labelLoading.delete(idx);
-            };
-            img.onerror = () => labelLoading.delete(idx);
-            img.src = FLAVORS[idx].label;
-          }
-        }
-        return t;
-      };
 
-      const bodyMat: any = isWebGPU
-        ? new THREE.MeshStandardNodeMaterial({
-            map: labelTex(0),
-            roughness: 0.32,
-            metalness: 0.55,
-          })
-        : new THREE.MeshStandardMaterial({
-            map: labelTex(0),
-            roughness: 0.32,
-            metalness: 0.55,
-          });
-      const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(R, R, H, 72, 1, true),
-        bodyMat
-      );
-      can.add(body);
+      const labelLoading = new Set<number>();
+      const makeBodyMaterial = (idx: number): any => {
+        const mat: any = isWebGPU
+          ? new THREE.MeshStandardNodeMaterial({
+              roughness: 0.32,
+              metalness: 0.55,
+            })
+          : new THREE.MeshStandardMaterial({
+              roughness: 0.32,
+              metalness: 0.55,
+            });
+        // procedural placeholder instantly, AI label swaps in when loaded
+        mat.map = seamlessTex(makeLabelTexture(FLAVORS[idx]));
+        mat.needsUpdate = true;
+        if (!labelLoading.has(idx)) {
+          labelLoading.add(idx);
+          const img = new Image();
+          img.onload = () => {
+            mat.map = seamlessTex(img);
+            mat.needsUpdate = true;
+            labelLoading.delete(idx);
+          };
+          img.onerror = () => labelLoading.delete(idx);
+          img.src = FLAVORS[idx].label;
+        }
+        return mat;
+      };
 
       const silver: any = isWebGPU
         ? new THREE.MeshStandardNodeMaterial({
@@ -170,40 +155,50 @@ export default function CanScene() {
             metalness: 0.95,
           });
 
-      const shoulder = new THREE.Mesh(
-        new THREE.CylinderGeometry(R * 0.86, R, 0.32, 72, 1, true),
-        silver
-      );
-      shoulder.position.y = H / 2 + 0.16;
-      can.add(shoulder);
-      const lid = new THREE.Mesh(new THREE.CircleGeometry(R * 0.86, 72), silver);
-      lid.rotation.x = -Math.PI / 2;
-      lid.position.y = H / 2 + 0.32;
-      can.add(lid);
-      const lidRim = new THREE.Mesh(
-        new THREE.TorusGeometry(R * 0.86, 0.045, 16, 72),
-        silver
-      );
-      lidRim.rotation.x = Math.PI / 2;
-      lidRim.position.y = H / 2 + 0.32;
-      can.add(lidRim);
-      const tab = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.028, 12, 24), silver);
-      tab.rotation.x = Math.PI / 2;
-      tab.position.set(0.18, H / 2 + 0.345, 0);
-      can.add(tab);
-      const botRim = new THREE.Mesh(
-        new THREE.TorusGeometry(R * 0.96, 0.05, 16, 72),
-        silver
-      );
-      botRim.rotation.x = Math.PI / 2;
-      botRim.position.y = -H / 2;
-      can.add(botRim);
-      const bottom = new THREE.Mesh(new THREE.CircleGeometry(R * 0.96, 72), silver);
-      bottom.rotation.x = Math.PI / 2;
-      bottom.position.y = -H / 2;
-      can.add(bottom);
+      // shared geometries
+      const geoBody = new THREE.CylinderGeometry(R, R, H, 72, 1, true);
+      const geoShoulder = new THREE.CylinderGeometry(R * 0.86, R, 0.32, 72, 1, true);
+      const geoLid = new THREE.CircleGeometry(R * 0.86, 72);
+      const geoLidRim = new THREE.TorusGeometry(R * 0.86, 0.045, 16, 72);
+      const geoTab = new THREE.TorusGeometry(0.09, 0.028, 12, 24);
+      const geoBotRim = new THREE.TorusGeometry(R * 0.96, 0.05, 16, 72);
+      const geoBottom = new THREE.CircleGeometry(R * 0.96, 72);
 
-      // Soft contact shadow
+      const buildCan = (idx: number) => {
+        const can = new THREE.Group();
+        const bodyMat = makeBodyMaterial(idx);
+        can.add(new THREE.Mesh(geoBody, bodyMat));
+        const shoulder = new THREE.Mesh(geoShoulder, silver);
+        shoulder.position.y = H / 2 + 0.16;
+        can.add(shoulder);
+        const lid = new THREE.Mesh(geoLid, silver);
+        lid.rotation.x = -Math.PI / 2;
+        lid.position.y = H / 2 + 0.32;
+        can.add(lid);
+        const lidRim = new THREE.Mesh(geoLidRim, silver);
+        lidRim.rotation.x = Math.PI / 2;
+        lidRim.position.y = H / 2 + 0.32;
+        can.add(lidRim);
+        const tab = new THREE.Mesh(geoTab, silver);
+        tab.rotation.x = Math.PI / 2;
+        tab.position.set(0.18, H / 2 + 0.345, 0);
+        can.add(tab);
+        const botRim = new THREE.Mesh(geoBotRim, silver);
+        botRim.rotation.x = Math.PI / 2;
+        botRim.position.y = -H / 2;
+        can.add(botRim);
+        const bottom = new THREE.Mesh(geoBottom, silver);
+        bottom.rotation.x = Math.PI / 2;
+        bottom.position.y = -H / 2;
+        can.add(bottom);
+        can.rotation.y = Math.PI; // label faces camera
+        scene.add(can);
+        return can;
+      };
+
+      const cans = FLAVORS.map((_, idx) => buildCan(idx));
+
+      // Soft contact shadow follows the focused can
       const shadowTex = (() => {
         const c = document.createElement("canvas");
         c.width = c.height = 128;
@@ -226,7 +221,6 @@ export default function CanScene() {
       shadow.rotation.x = -Math.PI / 2;
       shadow.position.y = -2.35;
       scene.add(shadow);
-      scene.add(can);
 
       // ---- Floating particles ----
       const P = 220;
@@ -245,10 +239,10 @@ export default function CanScene() {
         opacity: 0.55,
         depthWrite: false,
       });
-      const particles = new THREE.Points(pGeo, pMat);
-      scene.add(particles);
+      scene.add(new THREE.Points(pGeo, pMat));
 
       // ---- Background: AI images, crossfading with scroll ----
+      const texLoader = new THREE.TextureLoader();
       const bgScene = new THREE.Scene();
       const bgCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
       const mkPlane = (order: number) => {
@@ -280,7 +274,6 @@ export default function CanScene() {
           plane.mat.color.set(0xffffff);
           plane.mat.needsUpdate = true;
         } else {
-          // not loaded yet: flat brand color, no black flash
           plane.mat.map = null;
           plane.mat.color.set(FLAVORS[idx].bg.sky);
           plane.mat.needsUpdate = true;
@@ -293,7 +286,6 @@ export default function CanScene() {
             t.colorSpace = THREE.SRGBColorSpace;
             coverFit(t, window.innerWidth, window.innerHeight);
             bgTexes[i] = t;
-            // refresh planes currently showing this flavor
             if (planeA.flavor === i) planeA.flavor = -1;
             if (planeB.flavor === i) planeB.flavor = -1;
           },
@@ -306,22 +298,6 @@ export default function CanScene() {
           if (t) coverFit(t, window.innerWidth, window.innerHeight);
         });
       };
-
-      // ---- Flavor swap: label change + pop (rotation is scroll-driven) ----
-      const swapFlavor = (idx: number) => {
-        if (idx === shownFlavor) return;
-        shownFlavor = idx;
-        bodyMat.map = labelTex(idx);
-        bodyMat.needsUpdate = true;
-        gsap.fromTo(
-          can.scale,
-          { x: 0.92, y: 0.92, z: 0.92 },
-          { x: 1, y: 1, z: 1, duration: 0.9, ease: "back.out(1.6)" }
-        );
-        const acc = new THREE.Color(FLAVORS[idx].can.accent);
-        (pMat.color as THREE.Color).copy(acc).lerp(new THREE.Color(0xffffff), 0.4);
-      };
-      swapFlavor(0);
 
       // ---- Resize ----
       const onResize = () => {
@@ -336,7 +312,7 @@ export default function CanScene() {
 
       // ---- Loop ----
       const clock = new THREE.Clock();
-      const N = FLAVORS.length;
+      let lastActive = -1;
       renderer.setAnimationLoop(() => {
         const dt = Math.min(clock.getDelta(), 0.05);
         const elapsed = clock.elapsedTime;
@@ -348,11 +324,9 @@ export default function CanScene() {
         );
         const p = clamp01(scrollState.progress);
 
-        // journey segments: 0..N-1 across flavors
         const seg = p * (N - 1);
         const i = Math.min(Math.floor(seg), N - 1);
         const f = seg - i;
-        const sf = f * f * (3 - 2 * f); // smoothstep for lateral travel
 
         // background crossfade
         setPlaneFlavor(planeA, i);
@@ -364,22 +338,34 @@ export default function CanScene() {
           planeB.mat.opacity = 0;
         }
 
-        // active flavor
-        const fIdx = Math.min(N - 1, Math.round(p * (N - 1)));
-        if (fIdx !== scrollState.activeFlavor) scrollState.activeFlavor = fIdx;
-        swapFlavor(fIdx);
+        // particle tint follows active flavor
+        if (i !== lastActive) {
+          lastActive = i;
+          scrollState.activeFlavor = i;
+          const acc = new THREE.Color(FLAVORS[i].can.accent);
+          (pMat.color as THREE.Color).copy(acc).lerp(new THREE.Color(0xffffff), 0.4);
+        }
 
-        // can motion: zigzag across flavors — alternate sides, 360° spin
-        // and a downward dip while traveling to the next flavor
+        // ---- carousel ----
         const amp = camera.aspect >= 1 ? 1.9 : 0.85;
-        const sideX = (idx: number) => (idx % 2 === 0 ? amp : -amp);
-        can.position.x = lerp(sideX(i), sideX(Math.min(i + 1, N - 1)), sf);
-        can.rotation.y = Math.PI + seg * Math.PI * 2;
-        can.position.y =
-          Math.sin(elapsed * 1.1) * 0.1 +
-          lerp(0.15, -0.15, p) -
-          Math.sin(f * Math.PI) * 0.45;
-        can.rotation.x = lerp(0.05, -0.05, p) + Math.sin(elapsed * 0.7) * 0.02;
+        const slotX = (idx: number) => (idx % 2 === 0 ? amp : -amp);
+        // focus slot eases between zigzag sides during transition
+        const slotPos = lerp(slotX(i), slotX(Math.min(i + 1, N - 1)), smooth(f));
+        const S = 2 * amp + 2.2; // filmstrip spacing
+        const dipY = -Math.sin(f * Math.PI) * 0.35;
+        const baseY = Math.sin(elapsed * 1.1) * 0.1 + lerp(0.15, -0.15, p);
+
+        cans.forEach((can, k) => {
+          // filmstrip: upcoming cans wait left, past cans exit right
+          can.position.x = slotPos - (k - seg) * S;
+          can.position.y = baseY + dipY;
+          // entrance spin: one full turn, landing label-forward
+          const t0 = k === 0 ? 0 : k - 1;
+          const span = k === 0 ? 0.25 : 0.6;
+          can.rotation.y = Math.PI + (1 - smooth((seg - t0) / span)) * Math.PI * 2;
+          can.rotation.x = lerp(0.05, -0.05, p) + Math.sin(elapsed * 0.7 + k) * 0.02;
+        });
+        shadow.position.x = slotPos;
 
         camera.position.y = lerp(0.25, -0.35, p);
         camera.lookAt(0, lerp(0.1, -0.1, p), 0);
