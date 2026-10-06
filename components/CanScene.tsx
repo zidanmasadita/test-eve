@@ -10,6 +10,38 @@ import { scrollState } from "@/lib/scrollState";
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
 
+/**
+ * Blend the left edge with the right edge so the texture wraps around
+ * the cylinder without a visible seam (the "cut" look).
+ */
+function makeSeamless(
+  src: HTMLImageElement | HTMLCanvasElement,
+  blendRatio = 0.09
+): HTMLCanvasElement {
+  const w = src.width;
+  const h = src.height;
+  const cv = document.createElement("canvas");
+  cv.width = w;
+  cv.height = h;
+  const ctx = cv.getContext("2d")!;
+  ctx.drawImage(src, 0, 0);
+  const blendPx = Math.max(8, Math.floor(w * blendRatio));
+  // crossfade: paint the right-edge strip over the left edge through a gradient mask
+  const strip = document.createElement("canvas");
+  strip.width = blendPx;
+  strip.height = h;
+  const sctx = strip.getContext("2d")!;
+  sctx.drawImage(src, w - blendPx, 0, blendPx, h, 0, 0, blendPx, h);
+  sctx.globalCompositeOperation = "destination-in";
+  const grad = sctx.createLinearGradient(0, 0, blendPx, 0);
+  grad.addColorStop(0, "rgba(0,0,0,1)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  sctx.fillStyle = grad;
+  sctx.fillRect(0, 0, blendPx, h);
+  ctx.drawImage(strip, 0, 0);
+  return cv;
+}
+
 /** Fit texture to screen with cover behavior (crop, no stretch). */
 function coverFit(tex: THREE.Texture, sw: number, sh: number) {
   const img = tex.image as HTMLImageElement | undefined;
@@ -74,33 +106,36 @@ export default function CanScene() {
       const H = 2.7;
 
       // Label textures: procedural canvas instantly, AI artwork swaps in when loaded.
+      // Both go through makeSeamless so the wrap has no visible cut.
       let shownFlavor = -1;
       const labelCache = new Map<number, THREE.Texture>();
       const labelLoading = new Set<number>();
       const texLoader = new THREE.TextureLoader();
+      const seamlessTex = (src: HTMLImageElement | HTMLCanvasElement) => {
+        const t = new THREE.CanvasTexture(makeSeamless(src));
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.anisotropy = 8;
+        return t;
+      };
       const labelTex = (idx: number): THREE.Texture => {
         let t = labelCache.get(idx);
         if (!t) {
-          t = new THREE.CanvasTexture(makeLabelTexture(FLAVORS[idx]));
-          t.colorSpace = THREE.SRGBColorSpace;
-          t.anisotropy = 8;
+          t = seamlessTex(makeLabelTexture(FLAVORS[idx]));
           labelCache.set(idx, t);
           if (!labelLoading.has(idx)) {
             labelLoading.add(idx);
-            texLoader.load(
-              FLAVORS[idx].label,
-              (loaded) => {
-                loaded.colorSpace = THREE.SRGBColorSpace;
-                loaded.anisotropy = 8;
-                labelCache.set(idx, loaded);
-                if (shownFlavor === idx) {
-                  (bodyMat as any).map = loaded;
-                  (bodyMat as any).needsUpdate = true;
-                }
-              },
-              undefined,
-              () => labelLoading.delete(idx)
-            );
+            const img = new Image();
+            img.onload = () => {
+              const loaded = seamlessTex(img);
+              labelCache.set(idx, loaded);
+              if (shownFlavor === idx) {
+                bodyMat.map = loaded;
+                bodyMat.needsUpdate = true;
+              }
+              labelLoading.delete(idx);
+            };
+            img.onerror = () => labelLoading.delete(idx);
+            img.src = FLAVORS[idx].label;
           }
         }
         return t;
@@ -272,17 +307,12 @@ export default function CanScene() {
         });
       };
 
-      // ---- Flavor swap with flourish ----
+      // ---- Flavor swap: label change + pop (rotation is scroll-driven) ----
       const swapFlavor = (idx: number) => {
         if (idx === shownFlavor) return;
         shownFlavor = idx;
         bodyMat.map = labelTex(idx);
         bodyMat.needsUpdate = true;
-        gsap.fromTo(
-          can.rotation,
-          { y: can.rotation.y },
-          { y: can.rotation.y + Math.PI * 2, duration: 1.1, ease: "power3.inOut" }
-        );
         gsap.fromTo(
           can.scale,
           { x: 0.92, y: 0.92, z: 0.92 },
@@ -318,10 +348,13 @@ export default function CanScene() {
         );
         const p = clamp01(scrollState.progress);
 
+        // journey segments: 0..N-1 across flavors
+        const seg = p * (N - 1);
+        const i = Math.min(Math.floor(seg), N - 1);
+        const f = seg - i;
+        const sf = f * f * (3 - 2 * f); // smoothstep for lateral travel
+
         // background crossfade
-        const x = p * (N - 1);
-        const i = Math.min(Math.floor(x), N - 1);
-        const f = x - i;
         setPlaneFlavor(planeA, i);
         planeA.mat.opacity = 1;
         if (i < N - 1) {
@@ -336,10 +369,17 @@ export default function CanScene() {
         if (fIdx !== scrollState.activeFlavor) scrollState.activeFlavor = fIdx;
         swapFlavor(fIdx);
 
-        // can motion
-        can.position.y = Math.sin(elapsed * 1.1) * 0.12 + lerp(0.15, -0.15, p);
-        can.rotation.x = lerp(0.06, -0.06, p) + Math.sin(elapsed * 0.7) * 0.02;
-        can.position.x = Math.sin(elapsed * 0.5) * 0.06;
+        // can motion: zigzag across flavors — alternate sides, 360° spin
+        // and a downward dip while traveling to the next flavor
+        const amp = camera.aspect >= 1 ? 1.9 : 0.85;
+        const sideX = (idx: number) => (idx % 2 === 0 ? amp : -amp);
+        can.position.x = lerp(sideX(i), sideX(Math.min(i + 1, N - 1)), sf);
+        can.rotation.y = Math.PI + seg * Math.PI * 2;
+        can.position.y =
+          Math.sin(elapsed * 1.1) * 0.1 +
+          lerp(0.15, -0.15, p) -
+          Math.sin(f * Math.PI) * 0.45;
+        can.rotation.x = lerp(0.05, -0.05, p) + Math.sin(elapsed * 0.7) * 0.02;
 
         camera.position.y = lerp(0.25, -0.35, p);
         camera.lookAt(0, lerp(0.1, -0.1, p), 0);

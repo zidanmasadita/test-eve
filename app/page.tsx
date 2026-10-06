@@ -44,24 +44,24 @@ export default function Home() {
 
       {lastAdded && (
         <div className="fixed bottom-8 left-1/2 z-30 -translate-x-1/2 rounded-full bg-white px-6 py-3 text-sm font-bold text-black shadow-2xl">
-          {lastAdded} masuk keranjang! 🎉
+          {lastAdded} added to cart!
         </div>
       )}
 
       <main className="relative">
-        {/* HERO — langit */}
+        {/* HERO — the sky */}
         <section className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
           <p className="text-sm font-bold uppercase tracking-[0.5em] text-white/70">
-            Minuman Kaleng Premium
+            Premium Canned Drinks
           </p>
           <h1 className="mt-6 max-w-4xl text-6xl font-black leading-tight text-white drop-shadow-2xl md:text-8xl">
-            Dari Langit
+            From Sky
             <br />
-            ke Bumi
+            to Earth
           </h1>
           <p className="mt-6 max-w-xl text-lg text-white/85">
-            6 rasa, 6 ketinggian. Scroll ke bawah dan saksikan setiap kaleng
-            bertransformasi mengikuti langit hingga tanah.
+            Six flavors, six altitudes. Scroll down and watch each can transform
+            as it descends from the sky to the earth.
           </p>
           <div className="mt-12 animate-bounce text-white/80">
             <span className="text-sm font-semibold uppercase tracking-widest">Scroll</span>
@@ -71,40 +71,39 @@ export default function Home() {
           </div>
         </section>
 
-        {/* JOURNEY — 6 rasa */}
+        {/* JOURNEY — 6 flavors */}
         <div id="journey">
           <FlavorSections onAdd={addToCart} />
         </div>
 
-        {/* TENTANG */}
+        {/* ABOUT */}
         <section
           id="tentang"
           className="flex min-h-screen items-center justify-center px-6"
         >
           <div className="max-w-2xl rounded-3xl bg-black/25 p-10 text-center backdrop-blur-xl">
             <h2 className="text-4xl font-black text-white md:text-5xl">
-              Kenapa JosJis?
+              Why JosJis?
             </h2>
             <p className="mt-6 leading-relaxed text-white/85">
-              Setiap rasa JosJis terinspirasi dari lapisan perjalanan langit ke
-              bumi — dari birunya langit siang, hangatnya matahari terbit,
-              lembutnya awan, misterinya senja, rimbunnya hutan, hingga
-              kekayaan rasa perut bumi. Semua dibuat dengan bahan alami,
-              tanpa pengawet, dan dikemas dalam kaleng aluminium yang 100%
-              dapat didaur ulang.
+              Every JosJis flavor is inspired by a layer of the journey from sky
+              to earth — from the blue of the midday sky, the warmth of sunrise,
+              the softness of clouds, the mystery of dusk, the lush forest, to
+              the richness of the earth&apos;s core. Made with natural ingredients,
+              no preservatives, packed in 100% recyclable aluminum cans.
             </p>
           </div>
         </section>
 
-        {/* FINALE / BELI */}
+        {/* FINALE / SHOP */}
         <section
           id="beli"
           className="flex min-h-screen flex-col items-center justify-center px-6 text-center"
         >
           <h2 className="max-w-3xl text-5xl font-black text-white drop-shadow-2xl md:text-7xl">
-            Sudah sampai di Bumi.
+            Touchdown.
             <br />
-            Pilih rasamu.
+            Pick your flavor.
           </h2>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             {FLAVORS.map((f) => (
@@ -119,14 +118,14 @@ export default function Home() {
           </div>
           <p className="mt-8 text-white/70">
             {cart === 0
-              ? "Keranjangmu masih kosong."
-              : `${cart} kaleng di keranjang — checkout segera hadir!`}
+              ? "Your cart is still empty."
+              : `${cart} can${cart > 1 ? "s" : ""} in your cart — checkout coming soon!`}
           </p>
         </section>
 
         <footer className="border-t border-white/15 px-6 py-10 text-center text-sm text-white/60">
           <p className="font-black tracking-[0.3em] text-white/80">JOSJIS</p>
-          <p className="mt-2">© 2026 JosJis Beverage. Dari langit ke bumi.</p>
+          <p className="mt-2">© 2026 JosJis Beverage. From sky to earth.</p>
         </footer>
       </main>
     </SmoothScroll>

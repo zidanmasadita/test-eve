@@ -57,13 +57,13 @@ function Card({
         <div className="reveal mt-6 flex items-center justify-between">
           <span className="text-2xl font-extrabold text-white">
             {formatIDR(flavor.price)}
-            <span className="text-sm font-normal text-white/60"> /kaleng</span>
+            <span className="text-sm font-normal text-white/60"> /can</span>
           </span>
           <button
             onClick={onAdd}
             className="rounded-full bg-white px-6 py-3 text-sm font-bold text-black shadow-xl transition hover:scale-105 active:scale-95"
           >
-            + Keranjang
+            Add to Cart
           </button>
         </div>
       </div>
