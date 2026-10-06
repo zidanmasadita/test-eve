@@ -9,4 +9,8 @@ export const scrollState = {
   progress: 0,
   /** currently active flavor index (0..5) */
   activeFlavor: 0,
+  /** 0..1 across the finale section (single can -> all mini cans) */
+  finaleTarget: 0,
+  /** smoothed value used for rendering */
+  finaleProgress: 0,
 };

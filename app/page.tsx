@@ -26,8 +26,18 @@ export default function Home() {
         scrollState.target = self.progress;
       },
     });
+    const st2 = ScrollTrigger.create({
+      trigger: "#beli",
+      start: "top bottom",
+      end: "top top",
+      scrub: 0.6,
+      onUpdate: (self) => {
+        scrollState.finaleTarget = self.progress;
+      },
+    });
     return () => {
       st.kill();
+      st2.kill();
     };
   }, []);
 
