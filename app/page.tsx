@@ -50,25 +50,19 @@ export default function Home() {
 
       <main className="relative">
         {/* HERO — the sky */}
-        <section className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
-          <p className="text-sm font-bold uppercase tracking-[0.5em] text-white/70">
+        <section className="flex min-h-screen flex-col items-start justify-center px-6 text-left md:px-16 lg:px-24">
+          <p className="hero-reveal text-sm font-extrabold uppercase tracking-[0.5em] text-white/70">
             Premium Canned Drinks
           </p>
-          <h1 className="mt-6 max-w-4xl font-display text-6xl font-extrabold leading-tight text-white drop-shadow-2xl md:text-8xl">
+          <h1 className="hero-reveal hero-delay-1 mt-6 max-w-4xl font-display text-6xl font-extrabold leading-[0.95] text-white drop-shadow-2xl md:text-8xl">
             From Sky
             <br />
             to Earth
           </h1>
-          <p className="mt-6 max-w-xl text-lg text-white/85">
+          <p className="hero-reveal hero-delay-2 mt-6 max-w-xl text-lg text-white/85">
             Six flavors, six altitudes. Scroll down and watch each can transform
             as it descends from the sky to the earth.
           </p>
-          <div className="mt-12 animate-bounce text-white/80">
-            <span className="text-sm font-semibold uppercase tracking-widest">Scroll</span>
-            <div className="mx-auto mt-2 h-10 w-6 rounded-full border-2 border-white/60 p-1">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-white/80" />
-            </div>
-          </div>
         </section>
 
         {/* JOURNEY — 6 flavors */}
